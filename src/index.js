@@ -37,7 +37,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var bolt_1 = require("@slack/bolt");
-var _a = Bun.env, SLACK_BOT_TOKEN = _a.SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET = _a.SLACK_SIGNING_SECRET, SLACK_APP_TOKEN = _a.SLACK_APP_TOKEN;
+var dotenv_1 = require("dotenv");
+(0, dotenv_1.config)();
+var _a = process.env, SLACK_BOT_TOKEN = _a.SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET = _a.SLACK_SIGNING_SECRET, SLACK_APP_TOKEN = _a.SLACK_APP_TOKEN;
 var HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 //console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
 var app = new bolt_1.App({
@@ -46,9 +48,17 @@ var app = new bolt_1.App({
     socketMode: true,
     signingSecret: SLACK_SIGNING_SECRET,
 });
-
-await app.start();
-console.log("Bolt slack bot working");
+(function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, app.start()];
+            case 1:
+                _a.sent();
+                console.log("Bolt app is running!");
+                return [2 /*return*/];
+        }
+    });
+}); })();
 app.message("hacknighttest", function (_a) { return __awaiter(void 0, [_a], void 0, function (_b) {
     var message = _b.message, say = _b.say;
     return __generator(this, function (_c) {
@@ -58,7 +68,7 @@ app.message("hacknighttest", function (_a) { return __awaiter(void 0, [_a], void
                 if (message.channel !== HACK_NIGHT_CHANNEL)
                     return [2 /*return*/]; // ONly respond to the HACK NIGHT CHANNEl
                 console.log("Message received", message);
-                return [4 /*yield*/, say("Hello, <@".concat('', ">! ").concat(message.subtype))];
+                return [4 /*yield*/, say("Hello, <@".concat("", ">! ").concat(message.subtype))];
             case 1:
                 _c.sent();
                 return [2 /*return*/];
