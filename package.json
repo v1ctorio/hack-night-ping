@@ -1,9 +1,19 @@
 {
   "name": "hack-night-ping",
   "version": "1.0.0",
-  "main": "./dist/index.js",
+  "main": "./src/index.js",
   "repository": "https://github.com/v1ctorio/hack-night-ping",
   "author": "Vic <74506415+v1ctorio@users.noreply.github.com>",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@slack/bolt": "^3.19.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.8.3"
+  },
+  "scripts": {
+    "format": "biome format --write ./src",
+    "lint": "biome lint --write ./src"
+  }
 }
