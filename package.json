@@ -1,0 +1,9 @@
+{
+  "name": "hack-night-ping",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "repository": "https://github.com/v1ctorio/hack-night-ping",
+  "author": "Vic <74506415+v1ctorio@users.noreply.github.com>",
+  "license": "MIT",
+  "private": true
+}
