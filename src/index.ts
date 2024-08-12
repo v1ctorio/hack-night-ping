@@ -21,9 +21,83 @@ const app = new App({
 	console.log("Bolt app is running!");
 })();
 
-app.message("hacknighttest", async ({ message, say }) => {
-	//if (message.subtype !== "thread_broadcast") return;
-	if (message.channel !== HACK_NIGHT_CHANNEL) return; // ONly respond to the HACK NIGHT CHANNEl
+app.message("hacknight", async ({ message, say }) => {
+	let user = (message as any).user 
+	//(me	if (message.channel !== HACK_NIGHT_CHANNEL) return; // ONly respond to the HACK NIGHT CHANNEl
 	console.log("Message received", message);
-	await say(`Hello, <@${""}>! ${message.subtype}`);
+	await say({
+	"blocks": [
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello, "
+						},
+						{
+							"type": "user",
+							"user_id": user
+						},
+						{
+							"type": "text",
+							"text": " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you"
+						},
+						{
+							"type": "text",
+							"text": "could",
+							"style": {
+								"italic": true
+							}
+						},
+						{
+							"type": "text",
+							"text": "be aviable for a call."
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "divider"
+		},
+		{
+			"type": "divider"
+		},
+		{
+			"type": "actions",
+			"elements": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Americas",
+						"emoji": true
+					},
+					"value": "america"
+				},
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Central Europe",
+						"emoji": true
+					},
+					"value": "click_me_123"
+				},
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Western europe",
+						"emoji": true
+					},
+					"value": "click_me_123"
+				}
+			]
+		}
+	]
+})
 });
