@@ -7,6 +7,8 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
+let europeans = [];
+
 //console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
 
 const app = new App({
@@ -85,19 +87,30 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Central Europe",
 						"emoji": true
 					},
-					"value": "click_me_123"
+					"value": "europe"
 				},
 				{
 					"type": "button",
 					"text": {
 						"type": "plain_text",
-						"text": "Western europe",
+						"text": "Western Europe & east Asia",
 						"emoji": true
 					},
-					"value": "click_me_123"
+					"value": "wasia"
 				}
 			]
 		}
 	]
 })
+
+app.action("europe",async ({action,ack,respond}) =>{
+
+	const user = (action as any).user
+
+	await ack();
+	europeans.push(user);
+	respond("You have been succesfully added to the Europe hack night time zone")
+})
+
+
 });
