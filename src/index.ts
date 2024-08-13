@@ -78,16 +78,18 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Americas",
 						"emoji": true
 					},
-					"value": "america"
+					"value": "america",
+					action_id:"TZbutton"
 				},
 				{
 					"type": "button",
 					"text": {
 						"type": "plain_text",
 						"text": "Central Europe",
-						"emoji": true
+						"emoji": true,
 					},
-					"value": "europe"
+					"value": "europe",
+					"action_id":"TZbutton"
 				},
 				{
 					"type": "button",
@@ -96,12 +98,144 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Western Europe & east Asia",
 						"emoji": true
 					},
-					"value": "wasia"
+					"value": "wasia",
+					"action_id":"TZbutton"
 				}
 			]
 		}
 	]
 })
+
+
+app.action("TZbutton",async({action,ack,respond})=>{
+	await ack();
+	if(!action.value)return
+
+	respond(`"You have choosen the ${action.value} TZ, you will be pinged for Hack nights in the ${action.value} timezone.`)
+
+	console.log(action)
+})
+
+app.command("/schedule", async({command,ack,respond,body,client})=>{
+	const user = body.user_id
+	  await ack();
+const result = await client.views.open({
+      // Pass a valid trigger_id within 3 seconds of receiving it
+      trigger_id: body.trigger_id,
+       view: {
+	"type": "modal",
+	"title": {
+		"type": "plain_text",
+		"text": "Hack Night schedule",
+		"emoji": true
+	},
+	"submit": {
+		"type": "plain_text",
+		"text": "Submit",
+		"emoji": true
+	},
+	"close": {
+		"type": "plain_text",
+		"text": "Cancel",
+		"emoji": true
+	},
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Hiii, check the days you think you could be aviable for Hack Night"
+			}
+		},
+		{
+			"type": "divider"
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Week days"
+			},
+			"accessory": {
+				"type": "checkboxes",
+				"options": [
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Monday*"
+						},
+						"value": "monday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Tuesday*"
+						},
+						"value": "tuesday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Wednesday*"
+						},
+						"value": "wednesday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Thursday*"
+						},
+						"value": "thursday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Friday*"
+						},
+						"value": "friday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Saturday*"
+						},
+						"value": "saturday"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*Sunday*"
+						},
+						"value": "sunday"
+					}
+				],
+				"action_id": "checkboxes-schedule"
+			}
+		}
+	]
+}
+    });
+
+
+})
+
+
+
+app.action("todayHN", async ({action,ack,respond,body,client})=>{
+	await ack();
+
+	const TZ = getUserTZ(body.user.id)
+	const HNtime = getHNSchedule(TZ)
+
+	const count = 0
+
+
+	respond(`Nice, <@${body.user.id}>, you are registered into this night hack night in the ${TZ} timezone at ${HNtime}. \n In total there are ${count} registered for this night.`)
+	
+})
+
+
+
 
 app.action("europe",async ({action,ack,respond}) =>{
 
@@ -114,3 +248,14 @@ app.action("europe",async ({action,ack,respond}) =>{
 
 
 });
+
+
+function getUserTZ(user:String):String {
+	//TODO
+	return "EU"
+}
+
+function getHNSchedule(tz:String) {
+	//TODO return in UNIX or UTC idk the time of the HN in this timezone 
+	return 123456789
+}
