@@ -151,6 +151,16 @@ app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 	const date = new Date()
 
 
+	let users = ""
+
+	if (TZ === "EU") {
+		users = EU.map( (u) => `<@${u}>`).join(", ")
+	} else if (TZ === "AM") {
+		users = AM.map( (u) => `<@${u}>`).join(", ")
+	}
+	else if (TZ === "EA") {
+		users = EA.map( (u) => `<@${u}>`).join(", ")
+	}
 	
 	//TODO check if its the right time to start a hack night
 	const allowedTime = getHNSchedule(TZ)
@@ -170,6 +180,13 @@ app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 						"type": "mrkdwn",
 						"text": `<@${user}> has started a new hack night for ${TZ}, join now!`
 					}
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: `${users} youre invited to join this night, ${TZ} hackers!!`
+					},
 				},
 				{
 					"type": "section",
@@ -196,6 +213,7 @@ app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 		})
 	}
 
+	
 });
 
 app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
