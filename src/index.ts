@@ -8,9 +8,9 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
-let EU = []
-let AM = []
-let EA = []
+let EU: Array<string> = []
+let AM: Array<string> = []
+let EA: Array<string>= []
 
 //console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
 
@@ -83,7 +83,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Americas",
 						"emoji": true
 					},
-					"value": "america",
+					"value": "am",
 					action_id:"TZbuttonA"
 				},
 				{
@@ -93,7 +93,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Central Europe",
 						"emoji": true,
 					},
-					"value": "europe",
+					"value": "eu",
 					"action_id":"TZbuttonEU"
 				},
 				{
@@ -103,7 +103,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"text": "Western Europe & east Asia",
 						"emoji": true
 					},
-					"value": "wasia",
+					"value": "ea",
 					"action_id":"TZbuttonEA"
 				}
 			]
@@ -119,15 +119,99 @@ app.action("TZbuttonA",handleTZButtons)
 type actionData = SlackActionMiddlewareArgs<SlackAction> & AllMiddlewareArgs<StringIndexed>
 
 async function handleTZButtons(data: actionData) {
+	
 	const { action, ack, respond } = data;
 	if (action.type !=="button") return
 
+	let TZ = ""
+	if (action.value === "eu") {
+		TZ = "Central Europe"
+		EU.push(data.body.user.id)
+	} else if (action.value === "am") {
+		TZ = "Americas"
+		AM.push(data.body.user.id)
+	} else if (action.value === "ea") {
+		TZ = "Western Europe & east Asia"
+		EA.push(data.body.user.id)
+	}
 	await ack();
 
-	respond(`"Thats nice <@${data.body.user.id}>. You have chosen the ${action.value} TZ, you will be pinged for Hack nights in the ${action.value} timezone.`)
+	respond(`"Thats nice <@${data.body.user.id}>. You have chosen the ${TZ} TZ, you will be pinged for Hack nights in the ${TZ} timezone.`)
 
 	console.log(action)
 }
+
+app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
+	//start a new hack night, check if its time and if so ping the users
+	await ack();
+
+	const user = body.user_id
+	const channel = body.channel_id
+	const TZ = getUserTZ(user)
+	const date = new Date()
+
+
+	
+	//TODO check if its the right time to start a hack night
+	const allowedTime = getHNSchedule(TZ)
+	if(true /* if its the right time for a hack night*/){
+
+		await client.calls.add({
+			external_unique_id: "hacknight"+TZ,
+			join_url: "callurl",
+		})
+
+		respond({
+			text: "Starting a new hack night",
+			blocks:[
+				{
+					"type": "section",
+					"text": {
+						"type": "mrkdwn",
+						"text": `<@${user}> has started a new hack night for ${TZ}, join now!`
+					}
+				},
+				{
+					"type": "section",
+					"text": {
+						"type": "mrkdwn",
+						"text": "Are *you* planning to join this call later?"
+					},
+					"accessory": {
+						"type": "button",
+						"text": {
+							"type": "plain_text",
+							"text": "Im in!",
+							"emoji": true
+						},
+						"value": "joinHN",
+						"action_id": "joinHN"
+					}
+				},
+				{
+					"type": "call",
+//					"call_id": callId
+				}
+			]
+		})
+	}
+
+});
+
+app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
+	
+	let user = body.user_id
+	await ack();
+	const userTZ = getUserTZ(user)
+
+	if(userTZ === "EU"){
+		EU = EU.filter((u) => u !== user)
+	} else if (userTZ === "AM") {
+		AM = AM.filter((u) => u !== user)
+	} else if (userTZ === "EA") {
+		EA = EA.filter((u) => u !== user)
+	}
+});
 
 
 app.command("/schedule", async({command,ack,respond,body,client})=>{
