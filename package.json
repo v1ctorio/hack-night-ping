@@ -18,7 +18,7 @@
   "scripts": {
     "format": "biome format --write ./src",
     "lint": "biome lint --write ./src",
-    "bot": "node ./dist/index.js",
+    "bot": "bunx tsc && node ./dist/index.js",
     "build": "bunx tsc "
   },
   "type":"commonjs"

@@ -1,4 +1,5 @@
-import { App } from "@slack/bolt";
+import { AllMiddlewareArgs, App, SlackAction, SlackActionMiddlewareArgs } from "@slack/bolt";
+import { StringIndexed } from "@slack/bolt/dist/types/helpers";
 
 import { config } from "dotenv";
 config();
@@ -7,7 +8,9 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
-let europeans = [];
+let EU = []
+let AM = []
+let EA = []
 
 //console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
 
@@ -24,10 +27,12 @@ const app = new App({
 })();
 
 app.message("hacknight", async ({ message, say }) => {
-	let user = (message as any).user 
-	//(me	if (message.channel !== HACK_NIGHT_CHANNEL) return; // ONly respond to the HACK NIGHT CHANNEl
+	if(message.subtype) return; 
+	if (message.channel !== HACK_NIGHT_CHANNEL) return; // ONly respond to the HACK NIGHT CHANNEl
+	let user = message.user 
 	console.log("Message received", message);
 	await say({
+	"text": `Hello, <@${user}> and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
 	"blocks": [
 		{
 			"type": "rich_text",
@@ -45,7 +50,7 @@ app.message("hacknight", async ({ message, say }) => {
 						},
 						{
 							"type": "text",
-							"text": " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you"
+							"text": " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you "
 						},
 						{
 							"type": "text",
@@ -56,7 +61,7 @@ app.message("hacknight", async ({ message, say }) => {
 						},
 						{
 							"type": "text",
-							"text": "be aviable for a call."
+							"text": " be aviable for a call."
 						}
 					]
 				}
@@ -79,7 +84,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"emoji": true
 					},
 					"value": "america",
-					action_id:"TZbutton"
+					action_id:"TZbuttonA"
 				},
 				{
 					"type": "button",
@@ -89,7 +94,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"emoji": true,
 					},
 					"value": "europe",
-					"action_id":"TZbutton"
+					"action_id":"TZbuttonEU"
 				},
 				{
 					"type": "button",
@@ -99,7 +104,7 @@ app.message("hacknight", async ({ message, say }) => {
 						"emoji": true
 					},
 					"value": "wasia",
-					"action_id":"TZbutton"
+					"action_id":"TZbuttonEA"
 				}
 			]
 		}
@@ -107,14 +112,23 @@ app.message("hacknight", async ({ message, say }) => {
 })
 
 
-app.action("TZbutton",async({action,ack,respond})=>{
-	await ack();
-	if(!action.value)return
+app.action("TZbuttonEA",handleTZButtons)
+app.action("TZbuttonEU",handleTZButtons)
+app.action("TZbuttonA",handleTZButtons)
 
-	respond(`"You have choosen the ${action.value} TZ, you will be pinged for Hack nights in the ${action.value} timezone.`)
+type actionData = SlackActionMiddlewareArgs<SlackAction> & AllMiddlewareArgs<StringIndexed>
+
+async function handleTZButtons(data: actionData) {
+	const { action, ack, respond } = data;
+	if (action.type !=="button") return
+
+	await ack();
+
+	respond(`"Thats nice <@${data.body.user.id}>. You have chosen the ${action.value} TZ, you will be pinged for Hack nights in the ${action.value} timezone.`)
 
 	console.log(action)
-})
+}
+
 
 app.command("/schedule", async({command,ack,respond,body,client})=>{
 	const user = body.user_id
@@ -242,7 +256,7 @@ app.action("europe",async ({action,ack,respond}) =>{
 	const user = (action as any).user
 
 	await ack();
-	europeans.push(user);
+	EU.push(user);
 	respond("You have been succesfully added to the Europe hack night time zone")
 })
 
