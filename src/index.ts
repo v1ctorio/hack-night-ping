@@ -1,6 +1,10 @@
 import { AllMiddlewareArgs, App, SlackAction, SlackActionMiddlewareArgs } from "@slack/bolt";
 import { StringIndexed } from "@slack/bolt/dist/types/helpers";
 
+import PocketBase from "pocketbase";
+
+const pb = new PocketBase('http://localhost:8090')
+
 import { config } from "dotenv";
 config();
 
@@ -8,9 +12,13 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
-let EU: Array<string> = []
-let AM: Array<string> = []
-let EA: Array<string>= []
+let hackers = pb.collection("hackers");
+
+//night in places in GMT, time that you can start a hack night
+// [start, end] of the margin
+const EUNight = ["19:00", "3:00"]
+const AMNight = ["1:00", "9:00"] //idk if these are correct sorry
+const EANight = ["9:00", "17:00"]
 
 //console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
 
@@ -108,7 +116,7 @@ app.message("hacknight", async ({ message, say }) => {
 				}
 			]
 		}
-	]
+	]});
 })
 
 
@@ -123,20 +131,16 @@ async function handleTZButtons(data: actionData) {
 	const { action, ack, respond } = data;
 	if (action.type !=="button") return
 
-	let TZ = ""
-	if (action.value === "eu") {
-		TZ = "Central Europe"
-		EU.push(data.body.user.id)
-	} else if (action.value === "am") {
-		TZ = "Americas"
-		AM.push(data.body.user.id)
-	} else if (action.value === "ea") {
-		TZ = "Western Europe & east Asia"
-		EA.push(data.body.user.id)
-	}
+	let TZ = action?.value
+	if(!TZ) return
+
+	let TZString = getStringTZ(TZ)
+
+	hackers.create({user: data.body.user.id, tz: TZ}).catch((e) => console.error(e))
+
 	await ack();
 
-	respond(`"Thats nice <@${data.body.user.id}>. You have chosen the ${TZ} TZ, you will be pinged for Hack nights in the ${TZ} timezone.`)
+	respond(`"Nice <@${data.body.user.id}>. You have chosen the ${TZString} TZ, you will be pinged for Hack nights in the ${TZString} timezone.`)
 
 	console.log(action)
 }
@@ -151,16 +155,7 @@ app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 	const date = new Date()
 
 
-	let users = ""
-
-	if (TZ === "EU") {
-		users = EU.map( (u) => `<@${u}>`).join(", ")
-	} else if (TZ === "AM") {
-		users = AM.map( (u) => `<@${u}>`).join(", ")
-	}
-	else if (TZ === "EA") {
-		users = EA.map( (u) => `<@${u}>`).join(", ")
-	}
+	let users = (await hackers.getFullList()).map((h) => `<@${h.user}>`).join(", ")
 	
 	//TODO check if its the right time to start a hack night
 	const allowedTime = getHNSchedule(TZ)
@@ -337,41 +332,27 @@ const result = await client.views.open({
 
 
 
-app.action("todayHN", async ({action,ack,respond,body,client})=>{
-	await ack();
-
-	const TZ = getUserTZ(body.user.id)
-	const HNtime = getHNSchedule(TZ)
-
-	const count = 0
 
 
-	respond(`Nice, <@${body.user.id}>, you are registered into this night hack night in the ${TZ} timezone at ${HNtime}. \n In total there are ${count} registered for this night.`)
+
+
+
+
+async function getUserTZ(user:string):Promise<string> {
 	
-})
-
-
-
-
-app.action("europe",async ({action,ack,respond}) =>{
-
-	const user = (action as any).user
-
-	await ack();
-	EU.push(user);
-	respond("You have been succesfully added to the Europe hack night time zone")
-})
-
-
-});
-
-
-function getUserTZ(user:String):String {
-	//TODO
-	return "EU"
+	const h = await hackers.getOne(user)
+	return h.tz
 }
 
-function getHNSchedule(tz:String) {
-	//TODO return in UNIX or UTC idk the time of the HN in this timezone 
-	return 123456789
+async function isTime(tz:string) {
+	const currentTime = new Date().getHours() 
+	const allowedTime = 
+}
+
+
+function getStringTZ(tz:String):String {
+	if(tz === "eu") return "Central Europe"
+	if(tz === "am") return "Americas"
+	if(tz === "ea") return "East Asia & Eastern Europe"
+	return "Unknown"
 }
