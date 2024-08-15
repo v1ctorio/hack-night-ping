@@ -1,9 +1,11 @@
-import {
+import Slack, {
 	AllMiddlewareArgs,
-	App,
 	SlackAction,
 	SlackActionMiddlewareArgs,
 } from "@slack/bolt";
+
+const { App, subtype } = Slack;
+
 import { StringIndexed } from "@slack/bolt/dist/types/helpers";
 
 import PocketBase from "pocketbase";
@@ -42,91 +44,7 @@ const app = new App({
 	console.log("Bolt app is running!");
 })();
 
-app.message("hacknight", async ({ message, say }) => {
-	if (message.subtype) return;
-	if (message.channel !== HACK_NIGHT_CHANNEL) return; // ONly respond to the HACK NIGHT CHANNEl
-	let user = message.user;
-	console.log("Message received", message);
-	await say({
-		text: `Hello, <@${user}> and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
-		blocks: [
-			{
-				type: "rich_text",
-				elements: [
-					{
-						type: "rich_text_section",
-						elements: [
-							{
-								type: "text",
-								text: "Hello, ",
-							},
-							{
-								type: "user",
-								user_id: user,
-							},
-							{
-								type: "text",
-								text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you ",
-							},
-							{
-								type: "text",
-								text: "could",
-								style: {
-									italic: true,
-								},
-							},
-							{
-								type: "text",
-								text: " be aviable for a call.",
-							},
-						],
-					},
-				],
-			},
-			{
-				type: "divider",
-			},
-			{
-				type: "divider",
-			},
-			{
-				type: "actions",
-				elements: [
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
-							text: "Americas",
-							emoji: true,
-						},
-						value: "am",
-						action_id: "TZbuttonA",
-					},
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
-							text: "Central Europe",
-							emoji: true,
-						},
-						value: "eu",
-						action_id: "TZbuttonEU",
-					},
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
-							text: "Western Europe & east Asia",
-							emoji: true,
-						},
-						value: "ea",
-						action_id: "TZbuttonEA",
-					},
-				],
-			},
-		],
-	});
-});
+
 
 app.action("TZbuttonEA", handleTZButtons);
 app.action("TZbuttonEU", handleTZButtons);
@@ -145,7 +63,7 @@ async function handleTZButtons(data: actionData) {
 	let TZString = getStringTZ(TZ);
 
 	hackers
-		.create({ user: data.body.user.id, tz: TZ })
+		.create({ id: data.body.user.id, tz: TZ })
 		.catch((e) => console.error(e));
 
 	await ack();
@@ -157,6 +75,24 @@ async function handleTZButtons(data: actionData) {
 	console.log(action);
 }
 
+app.command("/status", async ({command,ack,body,client})=>{
+
+	await ack();
+
+	const user = body.user_id;
+	const h = await hackers.getOne(user);
+
+	if(!h) return;
+
+	const tz = getStringTZ(h.tz);
+
+	await client.chat.postMessage({
+		channel: user,
+		text: `You are currently set to the ${tz} timezone. Your blacklisted days are ${Object.keys(h.blacklistedDays).join(", ")}. Your id is ${h.id}`,
+	})
+
+})
+
 app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 	//start a new hack night, check if its time and if so ping the users
 	await ack();
@@ -164,10 +100,13 @@ app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
 	const user = body.user_id;
 	const channel = body.channel_id;
 	const TZ = await getUserTZ(user);
-	const date = new Date();
+	const dayOfTheWeek = getDayOfTheWeek();
 
 	let users = (await hackers.getFullList())
-		.map((h) => `<@${h.user}>`)
+		.map((h) => {
+			if (dayOfTheWeek in h.blacklistedDays) return;
+			return `<@${h.user}>`
+		})
 		.join(", ");
 
 	//TODO check if its the right time to start a hack night
@@ -332,7 +271,192 @@ app.command("/schedule", async ({ command, ack, respond, body, client }) => {
 			],
 		},
 	});
+
+	if(result.error) return;
+
+	console.log(result);
+
 });
+
+
+
+app.message(subtype("channel_join"), async ({ message, say }) => {
+
+	if(message.channel !== HACK_NIGHT_CHANNEL) return;
+	if (message.subtype !== "channel_join") return;
+
+	const user = message.user;
+
+	await say({
+		text: `Hello, <@${user}> and welcome to the hack night channel. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
+		blocks: [
+			{
+				type: "rich_text",
+				elements: [
+					{
+						type: "rich_text_section",
+						elements: [
+							{
+								type: "text",
+								text: "Hello, ",
+							},
+							{
+								type: "user",
+								user_id: user,
+							},
+							{
+								type: "text",
+								text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you ",
+							},
+							{
+								type: "text",
+								text: "could",
+								style: {
+									italic: true,
+								},
+							},
+							{
+								type: "text",
+								text: " be aviable for a call.",
+							},
+						],
+					},
+				],
+			},
+			{
+				type: "divider",
+			},
+			{
+				type: "divider",
+			},
+			{
+				type: "actions",
+				elements: [
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Americas",
+							emoji: true,
+						},
+						value: "am",
+						action_id: "TZbuttonA",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Central Europe",
+							emoji: true,
+						},
+						value: "eu",
+						action_id: "TZbuttonEU",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Western Europe & east Asia",
+							emoji: true,
+						},
+						value: "ea",
+						action_id: "TZbuttonEA",
+					},
+				],
+			},
+		],
+	});
+})
+
+// for debugging
+app.message('debugchanneljoin', async ({ message, say }) => {
+
+	if(message.channel !== HACK_NIGHT_CHANNEL) return;
+
+	if(message.subtype) return;
+
+	const user = message.user;
+
+	await say({
+		text: `Hello, <@${user}> and welcome to the hack night channel. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
+		blocks: [
+			{
+				type: "rich_text",
+				elements: [
+					{
+						type: "rich_text_section",
+						elements: [
+							{
+								type: "text",
+								text: "Hello, ",
+							},
+							{
+								type: "user",
+								user_id: user,
+							},
+							{
+								type: "text",
+								text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you ",
+							},
+							{
+								type: "text",
+								text: "could",
+								style: {
+									italic: true,
+								},
+							},
+							{
+								type: "text",
+								text: " be aviable for a call.",
+							},
+						],
+					},
+				],
+			},
+			{
+				type: "divider",
+			},
+			{
+				type: "divider",
+			},
+			{
+				type: "actions",
+				elements: [
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Americas",
+							emoji: true,
+						},
+						value: "am",
+						action_id: "TZbuttonA",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Central Europe",
+							emoji: true,
+						},
+						value: "eu",
+						action_id: "TZbuttonEU",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Western Europe & east Asia",
+							emoji: true,
+						},
+						value: "ea",
+						action_id: "TZbuttonEA",
+					},
+				],
+			},
+		],
+	});
+})
 
 async function getUserTZ(user: string): Promise<string> {
 	const h = await hackers.getOne(user);
@@ -351,4 +475,10 @@ function getStringTZ(tz: String): String {
 	if (tz === "am") return "Americas";
 	if (tz === "ea") return "East Asia & Eastern Europe";
 	return "Unknown";
+}
+
+function getDayOfTheWeek(): string {
+	const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+	const date = new Date();
+	return days[date.getDay()];
 }

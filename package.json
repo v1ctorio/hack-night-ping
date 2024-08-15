@@ -22,5 +22,5 @@
     "bot": "bunx tsc && node ./dist/index.js",
     "build": "bunx tsc "
   },
-  "type": "commonjs"
+  "type": "module"
 }
