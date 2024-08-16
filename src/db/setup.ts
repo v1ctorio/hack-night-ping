@@ -5,7 +5,13 @@ const sequelize = new Sequelize({
 });
 
 
-export async function db_setup(sequelize: Sequelize): Promise<Array<typeof Model>> {
+
+class User extends Model {
+    public id!: string;
+    public TZ!: string;
+    public blacklistedDays!: number[];
+}
+export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User>> {
     //Use db.sqlite for the database
 
     try {
@@ -15,12 +21,8 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof Model
         console.error('Cannot connect to the database:', error);
     }
 
+    
 
-    class User extends Model {
-        public id!: string;
-        public TZ!: string;
-        public blacklistedDays!: number[];
-    }
 
 
     User.init({
@@ -38,6 +40,8 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof Model
         timestamps: true,
     }
     );
+
+    await sequelize.sync({ force: true });
 
     return [User];
 }
