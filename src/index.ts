@@ -8,6 +8,7 @@ const { App, subtype } = Slack;
 
 import { StringIndexed } from "@slack/bolt/dist/types/helpers";
 
+import { TimeZone } from "./types/global";
 
 
 import { config } from "dotenv";
@@ -28,9 +29,8 @@ async function main() {
 	});
 
 
-	const [Hacker] = await db_setup(sequelize);
+	const [Hacker, HackNight] = await db_setup(sequelize);
 
-	type TimeZone = "EU" | "AM" | "EA";
 	const nightRanges = {
 		EU: [19, 3],
 		AM: [1, 9],
@@ -64,8 +64,10 @@ async function main() {
 		const { action, ack, respond } = data;
 		if (action.type !== "button") return;
 
-		let TZ = action?.value;
+		let TZ = action?.value as TimeZone;
 		if (!TZ) return;
+
+		
 
 		let TZString = getStringTZ(TZ);
 
@@ -111,6 +113,12 @@ async function main() {
 		const channel = body.channel_id;
 		const TZ = await getUserTZ(user);
 		const dayOfTheWeek = getDayOfTheWeek();
+
+
+		if (!TZ) {
+			ack("You need to set your timezone first");
+			return;
+		}
 
 		let users = (await Hacker.findAll())
 			.map((h) => {
@@ -352,7 +360,7 @@ async function main() {
 								text: "Americas",
 								emoji: true,
 							},
-							value: "am",
+							value: "AM",
 							action_id: "TZbuttonA",
 						},
 						{
@@ -362,7 +370,7 @@ async function main() {
 								text: "Central Europe",
 								emoji: true,
 							},
-							value: "eu",
+							value: "EU",
 							action_id: "TZbuttonEU",
 						},
 						{
@@ -372,7 +380,7 @@ async function main() {
 								text: "Western Europe & east Asia",
 								emoji: true,
 							},
-							value: "ea",
+							value: "EA",
 							action_id: "TZbuttonEA",
 						},
 					],
@@ -442,7 +450,7 @@ async function main() {
 								text: "Americas",
 								emoji: true,
 							},
-							value: "am",
+							value: "AM",
 							action_id: "TZbuttonA",
 						},
 						{
@@ -452,7 +460,7 @@ async function main() {
 								text: "Central Europe",
 								emoji: true,
 							},
-							value: "eu",
+							value: "EU",
 							action_id: "TZbuttonEU",
 						},
 						{
@@ -462,7 +470,7 @@ async function main() {
 								text: "Western Europe & east Asia",
 								emoji: true,
 							},
-							value: "ea",
+							value: "EA",
 							action_id: "TZbuttonEA",
 						},
 					],
@@ -471,9 +479,9 @@ async function main() {
 		});
 	});
 
-	async function getUserTZ(user: string): Promise<string> {
-		const h = await hackers.getOne(user);
-		return h.tz;
+	async function getUserTZ(user: string): Promise<TimeZone|undefined> {
+		const h = await Hacker.findOne( { where: { id: user } });
+		return h?.TZ ;
 	}
 
 	async function isTime(tz: string) {
@@ -483,10 +491,10 @@ async function main() {
 		return currentTime >= allowedTime[0] || currentTime <= allowedTime[1];
 	}
 
-	function getStringTZ(tz: String): String {
-		if (tz === "eu") return "Central Europe";
-		if (tz === "am") return "Americas";
-		if (tz === "ea") return "East Asia & Eastern Europe";
+	function getStringTZ(tz: TimeZone): String {
+		if (tz === "EU") return "Central Europe";
+		if (tz === "AM") return "Americas";
+		if (tz === "EA") return "East Asia & Eastern Europe";
 		return "Unknown";
 	}
 

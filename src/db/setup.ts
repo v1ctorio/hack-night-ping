@@ -1,4 +1,5 @@
 import { Sequelize, DataTypes, Model } from 'sequelize';
+import { TimeZone } from '../types/global';
 const sequelize = new Sequelize({
     dialect: 'sqlite',
     storage: 'db.sqlite',
@@ -8,10 +9,19 @@ const sequelize = new Sequelize({
 
 class User extends Model {
     public id!: string;
-    public TZ!: string;
+    public TZ!: TimeZone;
     public blacklistedDays!: number[];
 }
-export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User>> {
+
+class HackNight extends Model {
+    public id!: string;
+    public date!: Date;
+    public TZ!: TimeZone;
+    public participants!: string[];
+}
+
+
+export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User | typeof HackNight>> {
     //Use db.sqlite for the database
 
     try {
@@ -22,8 +32,6 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User>
     }
 
     
-
-
 
     User.init({
         id: {
@@ -41,9 +49,26 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User>
     }
     );
 
+    HackNight.init({
+        id: {
+            type: DataTypes.STRING,
+            primaryKey: true,
+            allowNull: false,
+        },
+        date: DataTypes.DATE,
+        TZ: DataTypes.STRING,
+        participants: DataTypes.ARRAY(DataTypes.STRING),
+    },
+    {
+        sequelize,
+        modelName: 'HackNight',
+        timestamps: true,
+    }
+    );
+
     await sequelize.sync({ force: true });
 
-    return [User];
+    return [User, HackNight];
 }
 
 db_setup(sequelize);
