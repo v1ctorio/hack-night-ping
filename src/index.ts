@@ -20,6 +20,9 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
+
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]; 
+
 async function main() {
 
 
@@ -29,12 +32,12 @@ async function main() {
 	});
 
 
-	const [Hacker, HackNight] = await db_setup(sequelize);
+	const {Hacker, HackNight} = await db_setup(sequelize);
 
-	const nightRanges = {
-		EU: [19, 3],
-		AM: [1, 9],
-		EA: [9, 17],
+	const startHours = {
+		EU: 19,
+		AM: 1,
+		EA: 9,
 	};
 
 	//console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
@@ -76,6 +79,8 @@ async function main() {
 			TZ: TZ,
 		})
 
+		await hacker.save();
+		
 		await sequelize.sync();
 
 		await ack();
@@ -87,7 +92,7 @@ async function main() {
 		console.log(action);
 	}
 
-	app.command("/status", async ({ command, ack, body, client }) => {
+	app.command("/hnstatus", async ({ command, ack, body, client }) => {
 
 		await ack();
 
@@ -100,7 +105,7 @@ async function main() {
 
 		await client.chat.postMessage({
 			channel: user,
-			text: `You are currently set to the ${tz} timezone. Your blacklisted days are ${Object.keys(h.blacklistedDays).join(", ")}. Your id is ${h.id}`,
+			text: `You are currently set to the ${tz} timezone. Your blacklisted days are ${h.blacklistedDays.map(d=>WEEKDAYS[d]).join(", ")}. Your id is ${h.id}`,
 		});
 
 	});
@@ -120,62 +125,62 @@ async function main() {
 			return;
 		}
 
-		let users = (await Hacker.findAll())
-			.map((h) => {
-				if (dayOfTheWeek in h.blacklistedDays) return;
-				return `<@${h.id}>`;
-			})
-			.join(", ");
+		let users = getHackerListAlwaysPinged(TZ, dayOfTheWeek);
 
-		//TODO check if its the right time to start a hack night
-		const allowedTime = await isTime(TZ);
-		if (true /* if its the right time for a hack night*/) {
-			await client.calls.add({
-				external_unique_id: "hacknight" + TZ,
-				join_url: "callurl",
-			});
+
+		HackNight.create({
+			id: Date.now(),
+			date: new Date(),
+			TZ: TZ,
+			participants: users,
+		})
+
 
 			respond({
-				text: "Starting a new hack night",
+				text: "Okie, scheduling a hack night today.",
 				blocks: [
 					{
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `<@${user}> has started a new hack night for ${TZ}, join now!`,
+							text: `<@${user}> has scheduled a hack night for ${TZ} today. Click on the button to show interest and get pinged when the call starts.`,
 						},
 					},
 					{
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `${users} youre invited to join this night, ${TZ} hackers!!`,
+							text: `${users.map(u=>`<@${u}>`).join(", ")} youre invited to join this night, you've either enabled all pings or selected this day of the week for pings. ${TZ} hackers`,
 						},
 					},
 					{
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: "Are *you* planning to join this call later?",
+							text: "No one has shown interest yet, be the first one!",
+						}
+					},
+					{
+						type: "section",
+						text: {
+							type: "mrkdwn",
+							text: "Are *you* interested on joining today?",
 						},
 						accessory: {
 							type: "button",
 							text: {
 								type: "plain_text",
-								text: "Im in!",
+								text: "Im in(terested)!",
 								emoji: true,
 							},
-							value: "joinHN",
-							action_id: "joinHN",
+							value: "interested",
+							action_id: "interested",
 						},
 					},
-					{
-						type: "call",
-						//					"call_id": callId
-					},
-				],
+				]
 			});
-		}
+		
+		
 	});
 
 	app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
@@ -193,7 +198,7 @@ async function main() {
 		);
 	});
 
-	app.command("/schedule", async ({ command, ack, respond, body, client }) => {
+	app.command("/hndays", async ({ command, ack, respond, body, client }) => {
 		const user = command.user_id;
 		await ack();
 		const result = await client.views.open({
@@ -301,96 +306,8 @@ async function main() {
 
 
 
-	app.message(subtype("channel_join"), async ({ message, say }) => {
-
-		if (message.channel !== HACK_NIGHT_CHANNEL) return;
-		if (message.subtype !== "channel_join") return;
-
-		const user = message.user;
-
-		await say({
-			text: `Hello, <@${user}> and welcome to the hack night channel. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
-			blocks: [
-				{
-					type: "rich_text",
-					elements: [
-						{
-							type: "rich_text_section",
-							elements: [
-								{
-									type: "text",
-									text: "Hello, ",
-								},
-								{
-									type: "user",
-									user_id: user,
-								},
-								{
-									type: "text",
-									text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you ",
-								},
-								{
-									type: "text",
-									text: "could",
-									style: {
-										italic: true,
-									},
-								},
-								{
-									type: "text",
-									text: " be aviable for a call.",
-								},
-							],
-						},
-					],
-				},
-				{
-					type: "divider",
-				},
-				{
-					type: "divider",
-				},
-				{
-					type: "actions",
-					elements: [
-						{
-							type: "button",
-							text: {
-								type: "plain_text",
-								text: "Americas",
-								emoji: true,
-							},
-							value: "AM",
-							action_id: "TZbuttonA",
-						},
-						{
-							type: "button",
-							text: {
-								type: "plain_text",
-								text: "Central Europe",
-								emoji: true,
-							},
-							value: "EU",
-							action_id: "TZbuttonEU",
-						},
-						{
-							type: "button",
-							text: {
-								type: "plain_text",
-								text: "Western Europe & east Asia",
-								emoji: true,
-							},
-							value: "EA",
-							action_id: "TZbuttonEA",
-						},
-					],
-				},
-			],
-		});
-	});
-
 	// for debugging
-	app.message('debugchanneljoin', async ({ message, say }) => {
+	app.message('debugchanneljoin' /*subtype("channel_join")*/, async ({ message, say }) => {
 
 		if (message.channel !== HACK_NIGHT_CHANNEL) return;
 
@@ -399,7 +316,7 @@ async function main() {
 		const user = message.user;
 
 		await say({
-			text: `Hello, <@${user}> and welcome to the hack night channel. Please pick a timezone for the hack night pings. Choose schedules where you could be aviable for a call.`,
+			text: `Hello, <@${user}> and welcome to the hack night channel. Please pick a timezone for the hack night pings. Choose timezones where you could be aviable for a call.`,
 			blocks: [
 				{
 					type: "rich_text",
@@ -417,7 +334,7 @@ async function main() {
 								},
 								{
 									type: "text",
-									text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose schedules where you ",
+									text: " and welcome to hack night. Please pick a timezone for the hack night pings. Choose timezones where you ",
 								},
 								{
 									type: "text",
@@ -437,9 +354,7 @@ async function main() {
 				{
 					type: "divider",
 				},
-				{
-					type: "divider",
-				},
+
 				{
 					type: "actions",
 					elements: [
@@ -475,6 +390,26 @@ async function main() {
 						},
 					],
 				},
+				{
+					type: "divider",
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "Click here if you want to be pinged for _*ALL*_ the HackNights. ",
+					},
+					accessory: {
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Always ping me",
+							emoji: true,
+						},
+						value: "alwaysping",
+						action_id: "alwaysping",
+					},
+				}
 			],
 		});
 	});
@@ -485,10 +420,10 @@ async function main() {
 	}
 
 	async function isTime(tz: string) {
-		const currentTime = new Date().getHours();
-		const allowedTime = nightRanges[tz as TimeZone];
+		const currentHour = new Date().getHours();
+		const allowedTime = startHours[tz as TimeZone];
 
-		return currentTime >= allowedTime[0] || currentTime <= allowedTime[1];
+		return currentHour === allowedTime;
 	}
 
 	function getStringTZ(tz: TimeZone): String {
@@ -502,6 +437,11 @@ async function main() {
 		const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 		const date = new Date();
 		return days[date.getDay()];
+	}
+
+	function getHackerListAlwaysPinged(tz: TimeZone, day: string): Array<string> {
+		//TODO
+		return [];
 	}
 
 }

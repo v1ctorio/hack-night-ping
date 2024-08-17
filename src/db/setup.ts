@@ -17,11 +17,11 @@ class HackNight extends Model {
     public id!: string;
     public date!: Date;
     public TZ!: TimeZone;
-    public participants!: string[];
+    public participants!: string;
 }
 
 
-export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User | typeof HackNight>> {
+export async function db_setup(sequelize: Sequelize): Promise<{Hacker: typeof User,HackNight: typeof HackNight}> {
     //Use db.sqlite for the database
 
     try {
@@ -57,7 +57,7 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User 
         },
         date: DataTypes.DATE,
         TZ: DataTypes.STRING,
-        participants: DataTypes.ARRAY(DataTypes.STRING),
+        participants: DataTypes.STRING, // It has to be a comma separated string :(
     },
     {
         sequelize,
@@ -68,7 +68,7 @@ export async function db_setup(sequelize: Sequelize): Promise<Array<typeof User 
 
     await sequelize.sync({ force: true });
 
-    return [User, HackNight];
+    return {Hacker:User, HackNight};
 }
 
 db_setup(sequelize);
