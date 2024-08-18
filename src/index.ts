@@ -14,6 +14,7 @@ import { TimeZone } from "./types/global";
 import { config, parse } from "dotenv";
 import { db_setup } from "./db/setup.js";
 import { Sequelize } from "sequelize";
+import { conversationContext } from "@slack/bolt/dist/conversation-store";
 config();
 
 const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
@@ -115,7 +116,6 @@ async function main() {
 		await ack();
 
 		const user = body.user_id;
-		const channel = body.channel_id;
 		const TZ = await getUserTZ(user);
 		const dayOfTheWeek = getDayOfTheWeek();
 
@@ -125,8 +125,9 @@ async function main() {
 			return;
 		}
 
-		let users = getHackerListAlwaysPinged(TZ, dayOfTheWeek);
+		let users = await getHackerListAlwaysPinged(TZ, dayOfTheWeek);
 
+		const nightId = Date.now().toString();
 
 
 
@@ -141,6 +142,10 @@ async function main() {
 							type: "mrkdwn",
 							text: `<@${user}> has scheduled a hack night for ${TZ} today. Click on the button to show interest and get pinged when the call starts.`,
 						},
+						
+					},
+					{
+						type: "divider",
 					},
 					{
 						type: "section",
@@ -148,6 +153,9 @@ async function main() {
 							type: "mrkdwn",
 							text: `${users.map(u=>`<@${u}>`).join(", ")} youre invited to join this night, you've either enabled all pings or selected this day of the week for pings. ${TZ} hackers`,
 						},
+					},
+					{
+						type: "divider",
 					},
 					{
 						type: "section",
@@ -169,7 +177,7 @@ async function main() {
 								text: "Im in(terested)!",
 								emoji: true,
 							},
-							value: "interested",
+							value: nightId.toString(),
 							action_id: "interested",
 						},
 					},
@@ -187,14 +195,88 @@ async function main() {
 			}
 		
 			const N = await HackNight.create({
-				id: Date.now(),
+				id: nightId,
 				date: new Date(),
 				TZ: TZ,
-				participants: users,
+				participants: users.length == 0 ? users.join(",") : "",
 				announcementMessage: r.ts,
 			})
+			console.log({nightId});
 			N.save();
 	});
+
+	app.action("interested", async ({ action, ack, body, client, respond }) => {
+		await ack();
+
+		if (action.type !== "button") return;
+
+		const user = body.user.id;
+
+		const hacker = await Hacker.findOne({ where: { id: user } });
+		if (!hacker) return respond("You need to set your timezone first");
+
+		const h = await HackNight.findOne({ where: { id: action.value } });
+		if (!h) return respond("This hack night doesn't exist anymore.");
+
+		if (parseCommaSeparatedList(h.dataValues.participants).includes(user)) return respond("You are already in the hack night list.");
+
+		h.update({ participants: h.participants + "," + user });
+		h.save();
+
+		await respond(`You have been added to the hack night list.`);
+
+		//edit the message
+
+		const announcment = {
+			text: "Okie, scheduling a hack night today.",
+			blocks: [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: `<@${user}> has scheduled a hack night for ${h.dataValues.TZ} today. Click on the button to show interest and get pinged when the call starts.`,
+					},
+					
+				},
+				{
+					type: "divider",
+				},
+				{
+					type: "divider",
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: `${parseCommaSeparatedList(h.dataValues.participants).map(u=>`<@${u}>`).join(", ")} youre invited to join this night, you've either enabled all pings, selected this day of the week for pings or clicked the button below. ${h.dataValues.TZ} hackers`,
+					}
+				},
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "Are *you* interested on joining today?",
+					},
+					accessory: {
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Im in(terested)!",
+							emoji: true,
+						},
+						value: h.dataValues.id,
+						action_id: "interested",
+					},
+				},
+			]
+		};
+
+		const message = await client.chat.update({
+			channel: HACK_NIGHT_CHANNEL,
+			ts: h.dataValues.announcementMessage,
+
+		});
+	})
 
 	app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
 		let user = body.user_id;
@@ -459,9 +541,19 @@ async function main() {
 		return days[date.getDay()];
 	}
 
-	function getHackerListAlwaysPinged(tz: TimeZone, day: string): Array<string> {
-		//TODO
-		return [];
+	async function getHackerListAlwaysPinged(tz: TimeZone, day: string): Promise<Array<string>> {
+		
+		// SELECT * FROM users
+		//WHERE (available_days & 2) = 2;
+
+		const res = await Hacker.findAll({where:Sequelize.literal(`(aviabledays & ${1 << WEEKDAYS.indexOf(day)}) = ${1 << WEEKDAYS.indexOf(day)}`)})
+
+
+		return res.map(h=>h.dataValues.id);
+	}
+
+	function parseCommaSeparatedList(hackers: string): Array<string> {
+		return hackers.split(",");
 	}
 
 	function parseDays(days: number): Array<string> {

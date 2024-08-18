@@ -8,18 +8,18 @@ const sequelize = new Sequelize({
 
 
 class User extends Model {
-    public id!: string;
-    public TZ!: TimeZone;
-    public aviableDays!: number;
-    public alwaysPing!: boolean;
+    declare id: string;
+    declare TZ: TimeZone;
+    declare aviableDays: number;
+    declare alwaysPing: boolean;
 }
 
 class HackNight extends Model {
-    public id!: string;
-    public date!: Date;
-    public TZ!: TimeZone;
-    public participants!: string;
-    public announcmentMessage!: string;
+    declare id: string;
+    declare date: Date;
+    declare TZ: TimeZone;
+    declare participants: string;
+    declare announcmentMessage: string;
 }
 
 
@@ -68,7 +68,7 @@ export async function db_setup(sequelize: Sequelize): Promise<{Hacker: typeof Us
     }
     );
 
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
 
     return {Hacker:User, HackNight};
 }
