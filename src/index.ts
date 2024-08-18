@@ -19,7 +19,7 @@ config();
 
 const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 
-const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
+const HACK_NIGHT_CHANNEL = process.env.HACK_NIGHT_CHANNEL || "C07GCBZPEJ1";
 
 
 const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday","sunday"]; 
@@ -42,17 +42,24 @@ async function main() {
 	};
 
 	//console.log( { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET });
+	const isSocket = JSON.parse(process.env.SOCKET_MODE ?? 'true') as boolean
 
 	const app = new App({
 		token: SLACK_BOT_TOKEN,
 		appToken: SLACK_APP_TOKEN,
-		socketMode: true,
+		socketMode: isSocket,
 		signingSecret: SLACK_SIGNING_SECRET,
+		port: 6777
 	});
 	(async () => {
 		await app.start();
 
 		console.log("Bolt app is running!");
+		if (isSocket) {
+			console.log("Socket mode is enabled");
+		} else {
+			console.log("Socket mode is disabled, listening on port 6777");
+		}
 	})();
 
 
@@ -206,7 +213,6 @@ async function main() {
 	});
 
 	app.action("interested", async ({ action, ack, body, client, respond }) => {
-		await ack();
 
 		if (action.type !== "button") return;
 

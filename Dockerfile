@@ -13,7 +13,7 @@ RUN bun install
 RUN bun run build
 
 # expose port 80 for not socket mode
-EXPOSE 80
+EXPOSE 6777
 
 
 
