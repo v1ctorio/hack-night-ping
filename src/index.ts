@@ -93,26 +93,54 @@ async function main() {
 
 		await ack();
 
-		respond(
-			`"Nice <@${data.body.user.id}>. You have chosen the ${TZString} TZ, you will be pinged for Hack nights in the ${TZString} timezone.`,
-		);
+		respond({
+			text:`Nice <@${data.body.user.id}>. You have chosen the ${TZString} TZ, you will be pinged for Hack nights in the ${TZString} timezone.`,
+			blocks: [
+				{
+					type: "section",
+					text: {
+						"text": `Nice <@${data.body.user.id}>. You have chosen the ${TZString} TZ, you will be pinged for Hack nights in the ${TZString} timezone.`,
+						"type": "mrkdwn"
+					}
+				},
+				{
+					type: "divider"
+				},
+				{
+					type: "section",
+					text: {
+						"text": "Now, Click on this button to get pinged for all the scheduled hack nights.",
+						"type": "mrkdwn"
+					},
+					accessory: {
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "Always ping me",
+							emoji: true
+						},
+						value: "alwaysping",
+						action_id: "alwaysping"
+					}
+				}
+			]
+		});
 
 		console.log(action);
 	}
 
-	app.command("/hnstatus", async ({ command, ack, body, client }) => {
+	app.command("/hnstatus", async ({ command, ack, body, client,respond }) => {
 
 		await ack();
 
 		const user = body.user_id;
 		const h = await Hacker.findOne({ where: { id: user } });
 
-		if (!h) return;
+		if (!h) {respond("You are not in the database yet!"); return;}
 
 		const tz = getStringTZ(h.TZ);
 
-		await client.chat.postMessage({
-			channel: user,
+		await respond({
 			text: `You are currently set to the ${tz} timezone. Your always ping days are ${parseDays(h.aviableDays).join(", ")}. Your id is ${h.id}`,
 		});
 
@@ -216,7 +244,7 @@ async function main() {
 				id: nightId,
 				date: new Date(),
 				TZ: TZ,
-				participants: users.length == 0 ? users.join(",") : "",
+				participants: users.length !== 0 ? users.join(",") : "",
 				announcementMessage: r.ts,
 			})
 			console.log({nightId});
@@ -235,12 +263,19 @@ async function main() {
 		const h = await HackNight.findOne({ where: { id: action.value } });
 		if (!h) return respond("This hack night doesn't exist anymore.");
 
-		if (parseCommaSeparatedList(h.dataValues.participants).includes(user)) return respond("You are already in the hack night list.");
+		if (parseCommaSeparatedList(h.dataValues.participants).includes(user)) { 
+			client.chat.postEphemeral({
+				channel: HACK_NIGHT_CHANNEL,
+				text: "You're already in the list!!",
+				user: user,
+			});
+			return;
+		}
+	
 
 		h.update({ participants: h.participants + "," + user });
 		h.save();
 
-		await respond(`You have been added to the hack night list.`);
 
 		//edit the message
 
@@ -288,11 +323,15 @@ async function main() {
 			]
 		};
 
-		const message = await client.chat.update({
-			channel: HACK_NIGHT_CHANNEL,
-			ts: h.dataValues.announcementMessage,
+		// const message = await client.chat.update({
+		// 	channel: HACK_NIGHT_CHANNEL,
+		// 	ts: h.dataValues.announcementMessage,
 
-		});
+		// });
+
+		await respond({
+			...announcment
+		})
 	})
 
 	app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
@@ -540,7 +579,7 @@ async function main() {
 		hacker.update({ aviableDays: 0b1111111 });
 		hacker.save();
 
-		await respond(`You will be pinged for all the hack nights.`);
+		await respond(`You will be pinged for all the hack nights. Your timezone is ${getStringTZ(hacker.dataValues.TZ)}`);
 	});
 
 	async function getUserTZ(user: string): Promise<TimeZone|null> {
