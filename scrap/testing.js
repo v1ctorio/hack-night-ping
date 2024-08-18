@@ -1,6 +1,6 @@
 const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday","sunday",]; 
 
-function parseDays(days: number): Array<string> {
+function parseDays(days) {
     const result = [];
     for ( let i = 0; i < WEEKDAYS.length; i++) {
         if (days & (1 << i)) {

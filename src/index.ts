@@ -121,7 +121,7 @@ async function main() {
 
 
 		if (!TZ) {
-			ack("You need to set your timezone first");
+			respond("You need to set your timezone first");
 			return;
 		}
 
@@ -130,7 +130,7 @@ async function main() {
 
 
 
-		await respond(`Ok, processinh...`)
+		await respond(`Ok, processing...`)
 
 			const announcment = {
 				text: "Okie, scheduling a hack night today.",
@@ -178,8 +178,7 @@ async function main() {
 
 			const r = await client.chat.postMessage({
 				channel: HACK_NIGHT_CHANNEL,
-				text: announcment.text,
-				blocks: announcment.blocks,
+				...announcment
 			});
 
 			if (!r.ts) {
@@ -428,9 +427,16 @@ async function main() {
 		});
 	});
 
-	async function getUserTZ(user: string): Promise<TimeZone|undefined> {
+	async function getUserTZ(user: string): Promise<TimeZone|null> {
+		console.log('Attempting to find user with ID:', user);
+
 		const h = await Hacker.findOne( { where: { id: user } });
-		return h?.TZ ;
+
+		console.log('Found this:', h);
+
+		if (h == null) return h
+
+		return h?.dataValues.TZ ;
 	}
 
 	async function isTime(tz: string) {

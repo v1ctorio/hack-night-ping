@@ -11,6 +11,7 @@ class User extends Model {
     public id!: string;
     public TZ!: TimeZone;
     public aviableDays!: number;
+    public alwaysPing!: boolean;
 }
 
 class HackNight extends Model {
