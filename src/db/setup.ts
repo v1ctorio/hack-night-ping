@@ -18,6 +18,7 @@ class HackNight extends Model {
     public date!: Date;
     public TZ!: TimeZone;
     public participants!: string;
+    public announcmentMessage!: string;
 }
 
 

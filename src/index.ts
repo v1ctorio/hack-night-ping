@@ -110,7 +110,7 @@ async function main() {
 
 	});
 
-	app.command("/hacknight", async ({ command, ack, respond, body, client }) => {
+	app.command("/hacknight", async ({ command, ack, respond, body, client,context,say }) => {
 		//start a new hack night, check if its time and if so ping the users
 		await ack();
 
@@ -128,15 +128,11 @@ async function main() {
 		let users = getHackerListAlwaysPinged(TZ, dayOfTheWeek);
 
 
-		HackNight.create({
-			id: Date.now(),
-			date: new Date(),
-			TZ: TZ,
-			participants: users,
-		})
 
 
-			respond({
+		await respond(`Ok, processinh...`)
+
+			const announcment = {
 				text: "Okie, scheduling a hack night today.",
 				blocks: [
 					{
@@ -178,9 +174,27 @@ async function main() {
 						},
 					},
 				]
+			};
+
+			const r = await client.chat.postMessage({
+				channel: HACK_NIGHT_CHANNEL,
+				text: announcment.text,
+				blocks: announcment.blocks,
 			});
+
+			if (!r.ts) {
+				say("An error occurred while creating the hack night.");
+				return
+			}
 		
-		
+			const N = await HackNight.create({
+				id: Date.now(),
+				date: new Date(),
+				TZ: TZ,
+				participants: users,
+				announcementMessage: r.ts,
+			})
+			N.save();
 	});
 
 	app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
