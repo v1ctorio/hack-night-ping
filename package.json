@@ -23,7 +23,8 @@
     "format": "biome format --write ./src",
     "lint": "biome lint --write ./src",
     "bot": "bunx tsc && node ./dist/index.js",
-    "build": "bunx tsc "
+    "build": "bunx tsc",
+    "start": "node ./dist/index.js"
   },
   "type": "module"
 }

@@ -10,7 +10,7 @@ const sequelize = new Sequelize({
 class User extends Model {
     public id!: string;
     public TZ!: TimeZone;
-    public blacklistedDays!: number[];
+    public aviableDays!: number;
 }
 
 class HackNight extends Model {
@@ -40,7 +40,7 @@ export async function db_setup(sequelize: Sequelize): Promise<{Hacker: typeof Us
             allowNull: false,
         },
         TZ: DataTypes.STRING,
-        blacklistedDays: DataTypes.ARRAY(DataTypes.NUMBER), // week days are represented from 0-6, 0 is Sunday
+        aviableDays: DataTypes.INTEGER, // week days are represented in binary,1 is monday, 64 is saturday
     },
     {
         sequelize,

@@ -11,7 +11,7 @@ import { StringIndexed } from "@slack/bolt/dist/types/helpers";
 import { TimeZone } from "./types/global";
 
 
-import { config } from "dotenv";
+import { config, parse } from "dotenv";
 import { db_setup } from "./db/setup.js";
 import { Sequelize } from "sequelize";
 config();
@@ -21,7 +21,7 @@ const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
 const HACK_NIGHT_CHANNEL = "C07GCBZPEJ1";
 
 
-const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]; 
+const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday","sunday"]; 
 
 async function main() {
 
@@ -105,7 +105,7 @@ async function main() {
 
 		await client.chat.postMessage({
 			channel: user,
-			text: `You are currently set to the ${tz} timezone. Your blacklisted days are ${h.blacklistedDays.map(d=>WEEKDAYS[d]).join(", ")}. Your id is ${h.id}`,
+			text: `You are currently set to the ${tz} timezone. Your always ping days are ${parseDays(h.aviableDays).join(", ")}. Your id is ${h.id}`,
 		});
 
 	});
@@ -442,6 +442,16 @@ async function main() {
 	function getHackerListAlwaysPinged(tz: TimeZone, day: string): Array<string> {
 		//TODO
 		return [];
+	}
+
+	function parseDays(days: number): Array<string> {
+		const result = [];
+		for ( let i = 0; i < WEEKDAYS.length; i++) {
+			if (days & (1 << i)) {
+				result.push(WEEKDAYS[i]);
+			}
+		}
+		return result
 	}
 
 }
