@@ -355,7 +355,9 @@ async function main() {
 		const result = await client.views.open({
 			// Pass a valid trigger_id within 3 seconds of receiving it
 			trigger_id: body.trigger_id,
+			
 			view: {
+				callback_id: "hacknightdays",
 				type: "modal",
 				title: {
 					type: "plain_text",
@@ -450,11 +452,49 @@ async function main() {
 		});
 
 		if (result.error) return;
-
+		
 
 
 		console.log(result);
 
+	});
+
+	app.view("hacknightdays", async ({ ack, body, view, client}) => {
+		await ack();
+
+		const user = body.user.id;
+
+		const hacker = await Hacker.findOne({ where: { id: user } });
+
+		if (!hacker){ 
+			client.chat.postMessage({text:"You need to set your timezone first",channel: HACK_NIGHT_CHANNEL});
+			
+			return
+		};
+
+
+		const days = view.state
+
+
+		console.log(days);
+		await client.chat.postMessage({text:JSON.stringify(days.values.yMut7["checkboxes-schedule"]["selected_options"]),channel: HACK_NIGHT_CHANNEL});
+
+		const checkedDays = days.values.yMut7["checkboxes-schedule"]["selected_options"] 
+
+		if (!checkedDays) return;
+
+		client.chat.postEphemeral({
+			channel: HACK_NIGHT_CHANNEL,
+			text: `User <@${user}> has updated their days for Hack Night to ${checkedDays.map((d:any)=>d.value).join(", ")}`,
+			user: user,
+		})
+
+		const binaryDays = checkedDays.map((d:any)=>1 << WEEKDAYS.indexOf(d.value)).reduce((a:number,b:number)=>a|b,0);
+
+		console.log(binaryDays); // 0b1000001 is monday and sunday is 65
+		hacker.update({ aviableDays: binaryDays });
+
+		
 	});
 
 
