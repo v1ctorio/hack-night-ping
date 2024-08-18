@@ -13,7 +13,7 @@ import { TimeZone } from "./types/global";
 
 import { config, parse } from "dotenv";
 import { db_setup } from "./db/setup.js";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { conversationContext } from "@slack/bolt/dist/conversation-store";
 config();
 
@@ -135,8 +135,19 @@ async function main() {
 		let users = await getHackerListAlwaysPinged(TZ, dayOfTheWeek);
 
 		const nightId = Date.now().toString();
+		const now = new Date();
 
+		const nightToday = await HackNight.findOne({ where: {[Op.and]: [
+			sequelize.where(sequelize.fn('strftime', '%Y', sequelize.col('date')), now.getFullYear().toString()),
+			sequelize.where(sequelize.fn('strftime', '%m', sequelize.col('date')), ('0' + (now.getMonth() + 1)).slice(-2)),
+			sequelize.where(sequelize.fn('strftime', '%d', sequelize.col('date')), ('0' + now.getDate()).slice(-2))
+			]}
+		});
 
+		if (nightToday) {
+			await respond(`There is already a hack night scheduled for today.`);
+			return;
+		}
 
 		await respond(`Ok, processing...`)
 
@@ -401,6 +412,8 @@ async function main() {
 
 		if (result.error) return;
 
+
+
 		console.log(result);
 
 	});
@@ -513,6 +526,21 @@ async function main() {
 				}
 			],
 		});
+	});
+
+
+	app.action("alwaysping", async ({ action, ack, body, respond }) => {
+		if (action.type !== "button") return;
+
+		const user = body.user.id;
+
+		const hacker = await Hacker.findOne({ where: { id: user } });
+		if (!hacker) return respond("You need to set your timezone first");
+
+		hacker.update({ aviableDays: 0b1111111 });
+		hacker.save();
+
+		await respond(`You will be pinged for all the hack nights.`);
 	});
 
 	async function getUserTZ(user: string): Promise<TimeZone|null> {

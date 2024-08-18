@@ -11,7 +11,6 @@ class User extends Model {
     declare id: string;
     declare TZ: TimeZone;
     declare aviableDays: number;
-    declare alwaysPing: boolean;
 }
 
 class HackNight extends Model {
