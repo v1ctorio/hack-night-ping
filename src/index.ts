@@ -16,8 +16,13 @@ import { db_setup } from "./db/setup.js";
 import { Op, Sequelize } from "sequelize";
 import { conversationContext } from "@slack/bolt/dist/conversation-store";
 config();
+import cron from "node-cron";
 
 const { SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_APP_TOKEN } = process.env;
+
+
+type actionData = SlackActionMiddlewareArgs<SlackAction> &
+AllMiddlewareArgs<StringIndexed>;
 
 const HACK_NIGHT_CHANNEL = process.env.HACK_NIGHT_CHANNEL || "C07GCBZPEJ1";
 
@@ -68,8 +73,7 @@ async function main() {
 	app.action("TZbuttonEU", handleTZButtons);
 	app.action("TZbuttonA", handleTZButtons);
 
-	type actionData = SlackActionMiddlewareArgs<SlackAction> &
-		AllMiddlewareArgs<StringIndexed>;
+
 
 	async function handleTZButtons(data: actionData) {
 		const { action, ack, respond } = data;
@@ -247,9 +251,57 @@ async function main() {
 				participants: users.length !== 0 ? users.join(",") : "",
 				announcementMessage: r.ts,
 			})
+
+
+			scheduleNightStartMessage({nightId, TZ, messageTS:r.ts})
+
 			console.log({nightId});
 			N.save();
 	});
+
+	function scheduleNightStartMessage({nightId,TZ}:{nightId:string,TZ:TimeZone,messageTS:string}){
+
+		const today = new Date();
+
+		cron.schedule(`0 ${startHours[TZ]} ${today.getDay()} ${today.getMonth()} *`, async _ => {
+
+			const N = await HackNight.findOne({where:{id:nightId}});
+
+			if (!N) return;
+
+			const users = parseCommaSeparatedList(N.dataValues.participants);
+
+			const message = {
+				text: `Hello hackers, the hack night is starting now in the ${getStringTZ(TZ)} timezone. Join the call on slack.`,
+				blocks: [
+					{
+						type: "section",
+						text: {
+							type: "mrkdwn",
+							text: `Hello hackers, the hack night is starting now in the ${getStringTZ(TZ)} timezone!!!`,
+						},
+					},
+					{
+						type: "divider",
+					},
+					{
+						type: "section",
+						text: {
+							type: "mrkdwn",
+							text: `${users.map(u=>`<@${u}>`).join(", ")} you're invited to join the call.`
+						},
+					},
+				]
+			};
+
+
+
+			await app.client.chat.postMessage({
+				channel: HACK_NIGHT_CHANNEL,
+				...message
+			});
+		})
+	}
 
 	app.action("interested", async ({ action, ack, body, client, respond }) => {
 
@@ -334,12 +386,16 @@ async function main() {
 		})
 	})
 
-	app.command("/rmtz", async ({ command, ack, respond, body, client }) => {
+	app.command("/hnrmtz", async ({ command, ack, respond, body, client }) => {
 		let user = body.user_id;
 		await ack();
 		
 		const h = await Hacker.findOne({ where: { id: user } });
-		if (!h) return;
+		if (!h) {
+		
+			respond("You are not in the databse, theres nothing to remove!!");
+			return
+		};
 		h.destroy();
 
 		sequelize.sync();
@@ -499,8 +555,10 @@ async function main() {
 
 
 
-	// for debugging
-	app.message('debugchanneljoin' /*subtype("channel_join")*/, async ({ message, say }) => {
+	app.message(subtype("channel_join"),handleTZAdd);
+	app.message("Register my timezone!",handleTZAdd);
+
+	async function handleTZAdd({ message, say }:{message:Slack.KnownEventFromType<"message">,say:Slack.SayFn}) {
 
 		if (message.channel !== HACK_NIGHT_CHANNEL) return;
 
@@ -604,8 +662,7 @@ async function main() {
 					},
 				}
 			],
-		});
-	});
+	});}
 
 
 	app.action("alwaysping", async ({ action, ack, body, respond }) => {
