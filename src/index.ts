@@ -533,7 +533,6 @@ async function main() {
 
 
 		console.log(days);
-		await client.chat.postMessage({text:JSON.stringify(days.values.yMut7["checkboxes-schedule"]["selected_options"]),channel: HACK_NIGHT_CHANNEL});
 
 		const checkedDays = days.values.yMut7["checkboxes-schedule"]["selected_options"] 
 

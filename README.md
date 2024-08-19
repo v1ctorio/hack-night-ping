@@ -1,11 +1,20 @@
 # Hack night ping bot
 This is a simple bot that pings the members of the hack night channel.
 
+The following commands are available:
+-`Register my timezone!` To enable the flow that would normaly be triggered by the user joining the channel.
+-`/hacknight` To schedule a hack night.
+- `/hndays` To set specific days to be always pigned
+- `/hnstatus` 
+
 It works the next way:
 1. When an users join or reacting to a command it asks them for their timezone and if theyh want to be pinged on ALL hack nights or in certain days .
 2. Later, any (registered) user can schedule a hack night using /schedule. This will ping all the users with pings always on and show a button in which other people can join the hack night.
 3. When the hack night starts, the bot will ping all the users that have pings always on and the ones that have pings on that day.
 
+
+![](./scrap/asssets/registermytz.png)
+![](./scrap/asssets/schedulednightmessage.png)
 ## Running the bot
 
 There is a dockerfile that you can use to run the bot. You will need to set the following environment variables: 
